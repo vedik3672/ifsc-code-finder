@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFSC Code Finder - Search by Bank, State, City</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Base Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f7fa;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        /* Search Tabs */
+        .search-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #e0e0e0;
+            border-radius: 5px;
+        }
+
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+
+        /* Search Box */
+        .search-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #34495e;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        /* Results Section */
+        .results {
+            display: grid;
+            gap: 15px;
+        }
+
+        .result-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .error {
+            color: #e74c3c;
+            padding: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Advanced IFSC Code Finder</h1>
+            <p>Search by IFSC, Bank Name, State, City or Branch</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-tabs">
+            <div class="tab active" onclick="switchTab('ifsc')">IFSC Search</div>
+            <div class="tab" onclick="switchTab('bank')">Bank Search</div>
+            <div class="tab" onclick="switchTab('branch')">Branch Search</div>
+        </div>
+
+        <div class="search-box">
+            <!-- IFSC Search -->
+            <div id="ifscSearch" class="search-type">
+                <div class="input-group">
+                    <label>Enter IFSC Code</label>
+                    <input type="text" id="ifsc" placeholder="Example: SBIN0000001">
+                </div>
+            </div>
+
+            <!-- Bank Search -->
+            <div id="bankSearch" class="search-type" style="display:none">
+                <div class="input-group">
+                    <label>Bank Name</label>
+                    <select id="bank"></select>
+                </div>
+                <div class="input-group">
+                    <label>State</label>
+                    <select id="bankState"></select>
+                </div>
+                <div class="input-group">
+                    <label>City</label>
+                    <select id="bankCity"></select>
+                </div>
+            </div>
+
+            <!-- Branch Search -->
+            <div id="branchSearch" class="search-type" style="display:none">
+                <div class="input-group">
+                    <label>Bank Branch</label>
+                    <input type="text" id="branch" placeholder="Enter branch name">
+                </div>
+                <div class="input-group">
+                    <label>State</label>
+                    <select id="branchState"></select>
+                </div>
+                <div class="input-group">
+                    <label>City</label>
+                    <select id="branchCity"></select>
+                </div>
+            </div>
+
+            <button onclick="search()"><i class="fas fa-search"></i> Search</button>
+        </div>
+
+        <div class="loader" id="loader">
+            <i class="fas fa-spinner fa-spin"></i> Searching...
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_ENDPOINT = 'YOUR_API_ENDPOINT_HERE'; // You need to get this from an API provider
+
+        // Tabs Management
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.search-type').forEach(t => t.style.display = 'none');
+            
+            document.getElementById(${tab}Search).style.display = 'block';
+            event.target.classList.add('active');
+        }
+
+        // Search Function
+        async function search() {
+            const loader = document.getElementById('loader');
+            const errorDiv = document.getElementById('error');
+            const resultsDiv = document.getElementById('results');
+            
+            loader.style.display = 'block';
+            errorDiv.style.display = 'none';
+            resultsDiv.innerHTML = '';
+
+            try {
+                let apiUrl = '';
+                const activeTab = document.querySelector('.tab.active').textContent;
+
+                if (activeTab.includes('IFSC')) {
+                    const ifsc = document.getElementById('ifsc').value.trim();
+                    if (!ifsc) throw new Error('Please enter IFSC code');
+                    apiUrl = ${API_ENDPOINT}/ifsc/${ifsc};
+                } 
+                else if (activeTab.includes('Bank')) {
+                    const bank = document.getElementById('bank').value;
+                    const state = document.getElementById('bankState').value;
+                    const city = document.getElementById('bankCity').value;
+                    apiUrl = ${API_ENDPOINT}/bank/${bank}?state=${state}&city=${city};
+                }
+                else if (activeTab.includes('Branch')) {
+                    const branch = document.getElementById('branch').value;
+                    const state = document.getElementById('branchState').value;
+                    const city = document.getElementById('branchCity').value;
+                    apiUrl = ${API_ENDPOINT}/branch/${branch}?state=${state}&city=${city};
+                }
+
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.results.length > 0) {
+                    resultsDiv.innerHTML = data.results.map(result => `
+                        <div class="result-item">
+                            <h3>${result.BANK} - ${result.BRANCH}</h3>
+                            <p>IFSC: ${result.IFSC}</p>
+                            <p>Address: ${result.ADDRESS}</p>
+                            <p>${result.CITY}, ${result.STATE}</p>
+                            <p>MICR: ${result.MICR}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    throw new Error('No results found');
+                }
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        // Initialize dynamic dropdowns (You need to implement this)
+        async function loadDropdownOptions() {
+            // You'll need to fetch actual data from an API
+            const banks = ["SBI", "HDFC", "ICICI"];
+            const states = ["Maharashtra", "Delhi", "Karnataka"];
+            const cities = ["Mumbai", "Pune", "Bangalore"];
+
+            // Populate dropdowns
+            banks.forEach(bank => {
+                const option = document.createElement('option');
+                option.value = bank;
+                option.textContent = bank;
+                document.getElementById('bank').appendChild(option);
+            });
+
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state;
+                option.textContent = state;
+                document.querySelectorAll('select[id$="State"]').forEach(select => {
+                    select.appendChild(option.cloneNode(true));
+                });
+            });
+
+            cities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                document.querySelectorAll('select[id$="City"]').forEach(select => {
+                    select.appendChild(option.cloneNode(true));
+                });
+            });
+        }
+
+        // Initial load
+        loadDropdownOptions();
+    </script>
+</body>
+</html>
